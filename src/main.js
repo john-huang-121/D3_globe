@@ -1,83 +1,64 @@
 import './style.css'
 
-document.querySelector('#app').innerHTML = `
-  <div>
-  </div>
-`
+import * as d3 from "d3";
+import { feature } from "topojson-client";
 
-let width = d3.select("#map").node().getBoundingClientRect().width
-  let height = 500
-  const sensitivity = 75
+// Define SVG dimensions
+const width = 800, height = 800;
+const svg = d3.select("#app").append("svg")
+  .attr("width", width)
+  .attr("height", height);
 
-  let projection = d3.geoOrthographic()
-    .scale(250)
-    .center([0, 0])
-    .rotate([0,-30])
-    .translate([width / 2, height / 2])
+// Configure the orthographic projection
+const projection = d3.geoOrthographic()
+  .center([0, 0])
+  .rotate([0, -30])
+  .clipAngle(90)
+  .scale(width / 2.2)
+  .translate([width / 2, height / 2]);
 
+const path = d3.geoPath(projection);
 
-  const initialScale = projection.scale()
-  let path = d3.geoPath().projection(projection)
+// Draw sphere (globe background)
+svg.append("path")
+  .datum({ type: "Sphere" })
+  .attr("fill", "#89cfff")
+  .attr("stroke", "#000")
+  .attr("d", path);
 
-  let svg = d3.select("#map")
-    .append("svg")
-    .attr("width", width)
-    .attr("height", height)
+// Draw graticule (lat/long lines)
+const graticule = d3.geoGraticule();
+svg.append("path")
+  .datum(graticule())
+  .attr("fill", "none")
+  .attr("stroke", "#ccc")
+  .attr("stroke-width", 0.5)
+  .attr("d", path);
 
-  let globe = svg.append("circle")
-    .attr("fill", "#EEE")
-    .attr("stroke", "#000")
-    .attr("stroke-width", "0.2")
-    .attr("cx", width/2)
-    .attr("cy", height/2)
-    .attr("r", initialScale)
+// Load world land data and draw land areas
+const landDataURL = "https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json";
+d3.json(landDataURL).then(worldData => {
+  const land = feature(worldData, worldData.objects.land);
+  svg.append("path")
+    .datum(land)
+    .attr("fill", "#d8d8d8")
+    .attr("stroke", "#444")
+    .attr("stroke-width", 0.5)
+    .attr("d", path);
+});
 
-  svg.call(d3.drag().on('drag', () => {
-    const rotate = projection.rotate()
-    const k = sensitivity / projection.scale()
-    projection.rotate([
-      rotate[0] + d3.event.dx * k,
-      rotate[1] - d3.event.dy * k
-    ])
-    path = d3.geoPath().projection(projection)
-    svg.selectAll("path").attr("d", path)
-  }))
-    .call(d3.zoom().on('zoom', () => {
-      if(d3.event.transform.k > 0.3) {
-        projection.scale(initialScale * d3.event.transform.k)
-        path = d3.geoPath().projection(projection)
-        svg.selectAll("path").attr("d", path)
-        globe.attr("r", projection.scale())
-      }
-      else {
-        d3.event.transform.k = 0.3
-      }
-    }))
+// Set up drag behavior to rotate the globe
+const drag = d3.drag().on("drag", (event) => {
+  const [lon, lat] = projection.rotate();
+  const sensitivity = 0.25;
+  // Update projection rotation based on drag
+  projection.rotate([
+    lon + event.dx * sensitivity,
+    lat - event.dy * sensitivity
+  ]);
+  // Re-render paths with new projection
+  svg.selectAll("path").attr("d", path);
+});
 
-  let map = svg.append("g")
-
-  let data = await world_json.json()
-
-  map.append("g")
-    .attr("class", "countries" )
-    .selectAll("path")
-    .data(data.features)
-    .enter().append("path")
-    .attr("class", d => "country_" + d.properties.name.replace(" ","_"))
-    .attr("d", path)
-    .attr("fill", "white")
-    .style('stroke', 'black')
-    .style('stroke-width', 0.3)
-    .style("opacity",0.8)
-
-  //Optional rotate
-  d3.timer(function(elapsed) {
-    const rotate = projection.rotate()
-    const k = sensitivity / projection.scale()
-    projection.rotate([
-      rotate[0] - 1 * k,
-      rotate[1]
-    ])
-    path = d3.geoPath().projection(projection)
-    svg.selectAll("path").attr("d", path)
-  },200)
+// Apply drag to the SVG
+svg.call(drag);
