@@ -50,7 +50,7 @@ const drawGlobe = async () => {
     const land = feature(worldData, worldData.objects.land);
     svg.append("path")
       .datum(land)
-      .attr("fill", "#384e1d")
+      .attr("fill", "#448835")
       .attr("stroke", "#444")
       .attr("stroke-width", 0.5)
       .attr("d", path);
@@ -73,7 +73,7 @@ const drawGlobe = async () => {
       .append("circle")
       .attr("class", "airport")
       .attr("r", 1)
-      .attr("fill", "red")
+      .attr("fill", "#FFD700")
       .merge(circles)
       .attr("cx", d => projection([d.lon, d.lat])[0])
       .attr("cy", d => projection([d.lon, d.lat])[1]);
